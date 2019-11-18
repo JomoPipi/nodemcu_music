@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Car</title>
+    <link href='main.css' rel='stylesheet' type='text/css'>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="144x144"  href="/favicon-144x144.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon.ico">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00878f">
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport'>
+    <script src="WebSocket.js" type="text/javascript"></script>
+</head>
+
+<body>
+    <center>
+        <div id="screen">
+        </div>
+        
+        <input id="pitch" type="range" min="0" max="12.3" step="0.0001" oninput="sendDATA();"
+        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
+
+        <input id="mod_intensity" type="range" min="0" max="100" step="0.01" oninput="sendDATA();"
+        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
+        
+        <input id="mod_period" type="range" min="0" max="64" step="0.01" oninput="sendDATA();"
+        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
+
+    </center>
+</body>
+<script>
+    // const sliders = Array(8).fill().map((_,i) => {
+    //     const slider = E('input')
+    //     slider.type = 'range'
+    //     slider.id = '_' + i
+    //     slider.min = 35
+    //     slider.max = 3000
+    //     step = 1
+    //     slider.onpointerup = slider.ontouchend = slider.oninput = _ => sendDATA()
+    //     document.body.appendChild(slider)
+    //     return slider
+    // })
+    // const pads = Array(6).fill().map((_,i) => {
+    //     const pad = E('button')
+    //     pad.id = '_' + i
+    //     const letter = String.fromCharCode(i + 65);
+    //     pad.innerHTML = letter;
+    //     pad.onpointerup = pad.ontouchend = pad.oninput = _ => sendDATA(letter)
+    //     document.body.appendChild(pad)
+    //     return pad
+    // })
+    
+</script>
+</html>
