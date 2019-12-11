@@ -26,6 +26,7 @@ struct spkr_t {
   // int T = 0;
   // long wait = 500000;
   int pitch;
+  int wf;
   float mod_intensity;
   float mod_period;
 } spkr;
@@ -91,8 +92,22 @@ double waveFunction6(double x) {
 double waveFunction7(double x) { // tri
   return sqrt(sin(x));
 }
-double waveFunction(double x) {
+double waveFunction8(double x) {
   return random(1000)/1000.0;
+}
+
+double waveFunction(int f, double x) {
+  switch (f) {
+    case 0: return sin(x);
+    case 1: return asin(sin(x));
+    case 2: return sin(x) > 0.5 ? 1 : -1; // round(sin(x)) ?
+    case 3: return atan(tan(x));
+    case 4: return -atan(tan(x));
+    case 5: return cos(tan(x));
+    case 6: return sin(1/sin(x));
+    case 8: return asin(cos(x)/tan(x));
+    case 9: return random(1000)/1000.0;
+  }
 }
 
 void loop() {
@@ -102,7 +117,7 @@ void loop() {
 //  digitalWrite(spkr.pin, spkr.T ^= 1);
 //  delayMicros(spkr.wait);
   ++T;
-  tone(spkr.pin, spkr.pitch + waveFunction(T * spkr.mod_period / 1000.0 ) * spkr.mod_intensity);
+  tone(spkr.pin, spkr.pitch + waveFunction(spkr.wf, T * spkr.mod_period / 1000.0 ) * spkr.mod_intensity);
 
   server.handleClient();                      // run the server
 //  ArduinoOTA.handle();                        // listen for OTA events
@@ -279,7 +294,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       //  spkr.pitch = atoi((const char *)payload);
       
       // const payload = [pitch,m_amount,m_period].join`:`
-      int data[] = {0,0,0};
+      int data[] = {0,0,0,0};
       for(int i = 0, j = 0; i < lenght; ++i) {
         char c = payload[i] - 48;
         if (c == 10) {
@@ -291,6 +306,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       spkr.pitch         = data[0];
       spkr.mod_intensity = data[1] / 100.0;
       spkr.mod_period    = data[2] / 100.0;
+      spkr.wf            = data[3];
       // Serial.print("spkr.pitch = ");
       // Serial.print(spkr.pitch);
       // Serial.print(", ");
