@@ -67,6 +67,34 @@ void delayMicros(long mics) {
 unsigned long prevMillis = millis();
 unsigned long T = 0;
 
+double waveFunction0(double x) { // idk
+  return max(sin(x),cos(x));
+}
+double waveFunction1(double x) { // tri
+  return asin(sin(x));
+}
+double waveFunction2(double x) { // square1
+  return sin(x) > 0.5 ? 1 : -1;
+}
+double waveFunction3(double x) { // gl
+  return cos(tan(x));
+}
+double waveFunction4(double x) { // ascending saw
+  return atan(tan(x));
+}
+double waveFunction5(double x) { // descending saw
+  return -atan(tan(x));
+}
+double waveFunction6(double x) {
+  return sin(1/sin(x));
+}
+double waveFunction7(double x) { // tri
+  return sqrt(sin(x));
+}
+double waveFunction(double x) {
+  return random(1000)/1000.0;
+}
+
 void loop() {
   webSocket.loop();                           // constantly check for websocket events
 
@@ -74,7 +102,7 @@ void loop() {
 //  digitalWrite(spkr.pin, spkr.T ^= 1);
 //  delayMicros(spkr.wait);
   ++T;
-  tone(spkr.pin, spkr.pitch + sin(T * spkr.mod_period / 1000.0 ) * spkr.mod_intensity);
+  tone(spkr.pin, spkr.pitch + waveFunction(T * spkr.mod_period / 1000.0 ) * spkr.mod_intensity);
 
   server.handleClient();                      // run the server
 //  ArduinoOTA.handle();                        // listen for OTA events
