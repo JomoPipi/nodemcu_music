@@ -68,45 +68,17 @@ void delayMicros(long mics) {
 unsigned long prevMillis = millis();
 unsigned long T = 0;
 
-double waveFunction0(double x) { // idk
-  return max(sin(x),cos(x));
-}
-double waveFunction1(double x) { // tri
-  return asin(sin(x));
-}
-double waveFunction2(double x) { // square1
-  return sin(x) > 0.5 ? 1 : -1;
-}
-double waveFunction3(double x) { // gl
-  return cos(tan(x));
-}
-double waveFunction4(double x) { // ascending saw
-  return atan(tan(x));
-}
-double waveFunction5(double x) { // descending saw
-  return -atan(tan(x));
-}
-double waveFunction6(double x) {
-  return sin(1/sin(x));
-}
-double waveFunction7(double x) { // tri
-  return sqrt(sin(x));
-}
-double waveFunction8(double x) {
-  return random(1000)/1000.0;
-}
-
 double waveFunction(int f, double x) {
   switch (f) {
-    case 0: return sin(x);
-    case 1: return asin(sin(x));
-    case 2: return sin(x) > 0.5 ? 1 : -1; // round(sin(x)) ?
-    case 3: return atan(tan(x));
-    case 4: return -atan(tan(x));
-    case 5: return cos(tan(x));
-    case 6: return sin(1/sin(x));
-    case 8: return asin(cos(x)/tan(x));
-    case 9: return random(1000)/1000.0;
+    case 0: return sin(x);                // sine
+    case 1: return asin(sin(x));          // tri
+    case 2: return sin(x) > 0.5 ? 1 : -1; // square
+    case 3: return atan(tan(x));          // saw
+    case 4: return -atan(tan(x));         // reverse saw
+    case 5: return cos(tan(x));           // X
+    case 6: return sin(1/sin(x));         // Y
+    case 8: return atan(tan(x))-tan(cos(x)); // Z
+    case 9: return sqrt(-1);     // noise
   }
 }
 
@@ -116,8 +88,8 @@ void loop() {
 //  old way:
 //  digitalWrite(spkr.pin, spkr.T ^= 1);
 //  delayMicros(spkr.wait);
-  ++T;
-  tone(spkr.pin, spkr.pitch + waveFunction(spkr.wf, T * spkr.mod_period / 1000.0 ) * spkr.mod_intensity);
+  const double wf = waveFunction(spkr.wf, ++T * spkr.mod_period / 1000.0 );
+  tone(spkr.pin, spkr.pitch + wf * spkr.mod_intensity * (wf > 0 ? 2 : 1));
 
   server.handleClient();                      // run the server
 //  ArduinoOTA.handle();                        // listen for OTA events

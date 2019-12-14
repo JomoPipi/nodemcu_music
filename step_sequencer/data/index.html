@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Car</title>
+    <title>Sequencer</title>
     <link href='main.css' rel='stylesheet' type='text/css'>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
     <link rel="icon" type="image/png" sizes="144x144"  href="/favicon-144x144.png">
@@ -13,9 +13,33 @@
 </head>
 
 <body>
-    <center>
+
+    <div id="interface" >
+        Master Tempo
+        <input id="tempo" type="range" min="60" max="300" step="1" oninput="sendDATA();"
+        value="80" onpointerup="sendDATA();" ontouchend="sendDATA();"> 
+        <br>
+    </div> 
+
+    <div id="pitch-page">
+        <button class="back" onclick="gotoPage(interface)"> back </button>
+        <button class="back" onclick="gotoPage(interface)"> 12-tone </button> 
+        <button class="back" onclick="gotoPage(interface)"> n-tone </button> <br>
+    </div>
+
+    <div id="mod-page">
+        <button class="back" onclick="gotoPage(interface)"> back </button> <br>
+    </div>
+    
+    <div id="wave-page">
+        <button class="back" onclick="gotoPage(interface)"> back </button> <br>
+    </div>
+
+    <div id="knobs">
+
         <div id="screen">
         </div>
+        <button class="back" onclick="gotoPage(interface)"> back </button>
         
         <input id="pitch" type="range" min="0" max="12.3" step="0.0001" oninput="sendDATA();"
         value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
@@ -29,29 +53,85 @@
         <input id="waveform" type="range" min="0" max="8" step="1" oninput="sendDATA();"
         value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
 
-    </center>
+
+    </div>
 </body>
 <script>
-    // const sliders = Array(8).fill().map((_,i) => {
-    //     const slider = E('input')
-    //     slider.type = 'range'
-    //     slider.id = '_' + i
-    //     slider.min = 35
-    //     slider.max = 3000
-    //     step = 1
-    //     slider.onpointerup = slider.ontouchend = slider.oninput = _ => sendDATA()
-    //     document.body.appendChild(slider)
-    //     return slider
-    // })
-    // const pads = Array(6).fill().map((_,i) => {
-    //     const pad = E('button')
-    //     pad.id = '_' + i
-    //     const letter = String.fromCharCode(i + 65);
-    //     pad.innerHTML = letter;
-    //     pad.onpointerup = pad.ontouchend = pad.oninput = _ => sendDATA(letter)
-    //     document.body.appendChild(pad)
-    //     return pad
-    // })
+    const [interface,knobs,pitchPage,modPage,wavePage] = PAGES =
+        'interface,knobs,pitch-page,mod-page,wave-page'
+        .split`,`.map(D)
+    const funcs = 
+        'active-step,pitch,mod,wave,function'
+        .split`,`
     
+    const gotoPage = p => PAGES.forEach(P => 
+        P.style.display =  P === p ? 'block' : 'none')
+
+    // ############## INITIALIZE #######################
+        const btns = Array(5).fill().map((_,i) => {
+            const btn = E('button')
+            btn.classList.add('function-btn')
+            btn.id = funcs[i] + '-btn'
+            btn.innerHTML = funcs[i]
+            interface.appendChild(btn)
+            btn.onclick = _ =>
+                i === 0 ? toggleActiveStep :
+                i === 1 ? gotoPage(pitchPage) :
+                i === 2 ? gotoPage(modPage) : 
+                i === 3 ? gotoPage(wavePage) :
+                          0//gotoPage(functionPage)
+            return btn
+        })
+        interface.appendChild(E('br'))
+
+        notes.forEach((_,i) => {
+            const note = E('button'),d=note.dataset
+            d.active=1
+            d.pitch=0.7*(i+1)
+            d.modA=500
+            d.modP=200*(i+1)
+            d.wave=0
+            note.classList.add('note-btn')
+            note.innerHTML = i+1
+            note.id = 'note-'+i
+            note.onclick = _ => gotoPage(knobs)
+            interface.appendChild(note)
+            notes[i] = note
+
+            // pitch page
+            const p = E('input')
+            p.type='range'
+            p.classList.add('pitch-slider')
+            pitchPage.appendChild(p)
+            p.position="absolute"
+            p.id = 'p-'+i
+            p.min ='0'
+            p.max ='12.3'
+            p.step='0.0001'
+            p.value=d.pitch
+            p.transform="rotate(90deg)"
+            p.oninput=p.onpointerup=p.ontouchend=_=>{
+                note.dataset.pitch = 2 ** p.value
+                sendDATA()
+            }
+            
+        })
+    // ############################################################
+    
+    D('active-step-btn').onclick = toggleActiveStep
+    let _T=false
+    function toggleActiveStep() {
+        _T ^= 1
+        const btn = D('active-step-btn')
+        btn.classList.toggle('enabled')
+        notes.forEach((n,i) => {
+            if (n.dataset.active == true) 
+                n.classList.toggle('enabled')
+            n.onclick = _ => _T ? 
+                (n.dataset.active ^= 1,
+                n.classList.toggle('enabled')) :
+                gotoPage(knobs)
+        })
+    }
 </script>
 </html>
