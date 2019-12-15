@@ -21,19 +21,24 @@ const char *OTAPassword = "esp8266";
 
 const char* mdnsName = "esp8266"; // Domain name for the mDNS responder
 
-struct spkr_t {
+
+
+
+
+struct player_t {
+  unsigned long T;
   const int pin = D5;
-  // int T = 0;
-  // long wait = 500000;
-  int pitch;
-  int wf;
-  float mod_intensity;
-  float mod_period;
-} spkr;
+  bool muted = false;
+  long start_ms = millis();
+  long ms = 0;
+  int currentNote=0;
+  int delayMS = 0; // (tempo)
+} player;
+
 /*__________________________________________________________SETUP__________________________________________________________*/
 
 void setup() {
-  pinMode(spkr.pin, OUTPUT);
+  pinMode(player.pin, OUTPUT);
 
   Serial.begin(115200);        // Start the Serial communication to send messages to the computer
   delay(10);
@@ -56,17 +61,15 @@ void setup() {
 /*__________________________________________________________LOOP__________________________________________________________*/
 
 
-void delayMicros(long mics) {
-  // to be benchmarked:
-  if (mics >> 14 > 0)
-//  if (mics > 16000)
-    delay(mics / 1000);
-  else
-    delayMicroseconds(mics);
-}
+// void delayMicros(long mics) {
+//   // to be benchmarked:
+//   if (mics >> 14 > 0)
+// //  if (mics > 16000)
+//     delay(mics / 1000);
+//   else
+//     delayMicroseconds(mics);
+// }
 
-unsigned long prevMillis = millis();
-unsigned long T = 0;
 
 double waveFunction(int f, double x) {
   switch (f) {
@@ -81,19 +84,118 @@ double waveFunction(int f, double x) {
     case 9: return sqrt(-1);     // noise
   }
 }
+typedef struct {
+  bool active = true;
+  int pitch = 220;
+  int waveType = 0;
+  float mod_period = 1;
+  float mod_intensity = 0.05;
+} Note;
+
+Note notes[8];
+
 
 void loop() {
   webSocket.loop();                           // constantly check for websocket events
-
-//  old way:
-//  digitalWrite(spkr.pin, spkr.T ^= 1);
-//  delayMicros(spkr.wait);
-  const double wf = waveFunction(spkr.wf, ++T * spkr.mod_period / 1000.0 );
-  tone(spkr.pin, spkr.pitch + wf * spkr.mod_intensity * (wf > 0 ? 2 : 1));
+    int x = 0;
+  if (player.ms >= player.start_ms + player.delayMS) {
+    do {
+      player.currentNote = (player.currentNote+1) % 8;
+    } while (x++ < 8 && !notes[player.currentNote].active);
+    player.start_ms = player.ms;
+  }
+  player.ms = millis();
+  const Note note = notes[0];//notes[player.currentNote];
+  const double wf = waveFunction(note.waveType, ++player.T * note.mod_period / 1000.0 );
+  if (x < 8) // mute by active step
+    tone(player.pin, note.pitch + wf * note.mod_intensity * (wf > 0 ? 2 : 1));
 
   server.handleClient();                      // run the server
 //  ArduinoOTA.handle();                        // listen for OTA events
 }
+
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) { // When a WebSocket message is received
+  switch (type) {
+    case WStype_DISCONNECTED:             // if the websocket is disconnected
+      Serial.printf("[%u] Disconnected!\n", num);
+      break;
+    case WStype_CONNECTED: {              // if a new websocket connection is established
+        IPAddress ip = webSocket.remoteIP(num);
+        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+      }
+      break;
+    case WStype_TEXT:                     // if new text data is received
+
+      Serial.printf("[%u] get Text: %s\n", num, payload);
+
+      //  note.pitch = atoi((const char *)payload);
+
+      // typedef struct {
+      //   int pitch=220;
+      //   int waveType=0;
+      //   float mod_intensity=0.05;
+      //   float mod_period=1;
+      // } Note;
+
+      // Note notes[8];
+
+      // struct player_t {
+      //   unsigned long T;
+      //   const int pin = D5;
+      //   int currentNote=0;
+      //   int start_ms;
+      //   int tempo;
+      //   int ms;
+      // } player;
+      
+      // const payload = [pitch,m_amount,m_period].join`:`
+      // [tempo, 8 notes (each with 5 properties)][
+        //     active,
+        //     pitch,
+        //     modA,
+        //     modP,
+        //     wave
+        // ]
+      const int datalength = 1 + 8 * 5;
+      int data[datalength];
+      for(int i = 0, j = 0; i < lenght; ++i) {
+        char c = payload[i] - 48;
+        if (c == 10) {
+          ++j;
+          continue;
+        }
+        data[j] = data[j] * 10 + c;
+      }
+      player.delayMS = 60000/data[0];
+      Serial.print('delayMS =');
+      for (int i = 1; i < datalength; i++) {
+        const int noteIdx = (i-1)/5;
+        const int x = (i-1) % 5;
+        const int y = data[i];
+        if (x == 0)
+          notes[noteIdx].active = y;
+        else if (x == 1)
+          notes[noteIdx].pitch = y;
+        else if (x == 2)
+          notes[noteIdx].mod_intensity = y / 100.0;
+        else if (x == 3)
+          notes[noteIdx].mod_period = y / 100.0;
+        else if (x == 4)
+          notes[noteIdx].waveType = y;
+      }
+      // Serial.print("player.pitch = ");
+      // Serial.print(player.pitch);
+      // Serial.print(", ");
+      // Serial.print("player.mod_intensity = ");
+      // Serial.print(player.mod_intensity);
+      // Serial.print(", ");
+      // Serial.print("player.mod_period = ");
+      // Serial.println(player.mod_period);
+      break;
+  }
+}
+
 
 
 /*__________________________________________________________SETUP_FUNCTIONS__________________________________________________________*/
@@ -246,48 +348,6 @@ void handleFileUpload() { // upload a new file to the SPIFFS
     } else {
       server.send(500, "text/plain", "500: couldn't create file");
     }
-  }
-}
-
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) { // When a WebSocket message is received
-  switch (type) {
-    case WStype_DISCONNECTED:             // if the websocket is disconnected
-      Serial.printf("[%u] Disconnected!\n", num);
-      break;
-    case WStype_CONNECTED: {              // if a new websocket connection is established
-        IPAddress ip = webSocket.remoteIP(num);
-        Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-      }
-      break;
-    case WStype_TEXT:                     // if new text data is received
-
-      Serial.printf("[%u] get Text: %s\n", num, payload);
-
-      //  spkr.pitch = atoi((const char *)payload);
-      
-      // const payload = [pitch,m_amount,m_period].join`:`
-      int data[] = {0,0,0,0};
-      for(int i = 0, j = 0; i < lenght; ++i) {
-        char c = payload[i] - 48;
-        if (c == 10) {
-          ++j;
-          continue;
-        }
-        data[j] = data[j] * 10 + c;
-      }
-      spkr.pitch         = data[0];
-      spkr.mod_intensity = data[1] / 100.0;
-      spkr.mod_period    = data[2] / 100.0;
-      spkr.wf            = data[3];
-      // Serial.print("spkr.pitch = ");
-      // Serial.print(spkr.pitch);
-      // Serial.print(", ");
-      // Serial.print("spkr.mod_intensity = ");
-      // Serial.print(spkr.mod_intensity);
-      // Serial.print(", ");
-      // Serial.print("spkr.mod_period = ");
-      // Serial.println(spkr.mod_period);
-      break;
   }
 }
 

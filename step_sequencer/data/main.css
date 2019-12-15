@@ -64,7 +64,7 @@ button{
 }
 #mod_intensity, #mod_period, #pitch, #waveform, #tempo {
     transform: none;
-    width:90%;
+    width:100%;
 }
 input[type=range]::-webkit-slider-runnable-track {
     background-color: rgb(90, 81, 84);

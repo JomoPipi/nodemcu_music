@@ -1,3 +1,4 @@
+const log = console.log
 var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);
 connection.onopen = function () {
     connection.send('Connect ' + new Date());
@@ -53,6 +54,18 @@ function sendDATA() {
     //     ...[...notes.map(note => Object.values(note.dataset))]
     // ].join`:`
     // console.log(payload)
-
+    const items = [D('tempo').value]
+    notes.forEach(note => {
+        const d=note.dataset
+        items.push([
+            d.active,
+            d.pitch,
+            d.modA,
+            d.modP,
+            d.wave
+        ].join`:`)
+    })
+    const payload = items.join`:`
+    log(payload)
     connection.send(payload)
 }
