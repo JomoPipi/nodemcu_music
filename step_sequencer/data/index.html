@@ -25,7 +25,7 @@
     <div id="pitch-page">
         <div id="pitch-options">
             <button class="back" onclick="gotoPage(interface)"> back </button>
-            <button class="back" onclick="gotoPage(interface)"> 12-tone </button> 
+            <button id="12tone" class="back" onclick="gotoPage(interface)"> 12-tone </button> 
         </div>
         <div id="pitch-slider-container"></div>
     </div>
@@ -130,6 +130,7 @@
                 box.style.height = '50vh'
                 box.style.display = 'inline-block'
                 const text = E('div')
+                text.id = 'ps-text-'+i
                 box.appendChild(text)
                 box.appendChild(p)
                 D('pitch-slider-container').appendChild(box)
@@ -203,7 +204,47 @@
             }
         })
     // ############################################################
-    
+    const middleC = 261.625565
+    const numKeys = 88
+    const TR2 = 2 ** (1/12.0)
+    const pitches = Array(numKeys).fill().map((_,i) => 
+        middleC * TR2**(i-36)).map(x=>Math.round(x))
+    function noteName(i) {
+        return 'A,A#/Bb,B,C,C#/Db,D,D#/Eb,E,F,F#/Gb,G,G#/Ab'.split`,`[(i+3)%12] +
+        ((i+3)/12-2|0)
+    }
+
+    D('12tone').onclick = function() {
+        if (D('12tone').classList.toggle('enabled')){
+            for (let i = 0; i < 8; i++) {
+                const p = D('p-'+i), pText = D('ps-text-'+i), note = D('note-'+i)
+                p.min=0
+                p.max=numKeys
+                p.step=1
+                p.oninput=p.onpointerup=p.ontouchend=_=>{
+                    const j = p.value
+                    note.dataset.pitch = pitches[j]
+                    pText.innerHTML = noteName(+j)
+                    if (pText.innerHTML === 'E5')
+                        pText.innerHTML = 'off'
+                    sendDATA()
+                }
+            }
+        } else {
+            for (let i = 0; i < 8; i++) {
+                const p = D('p-'+i), pText = D('ps-text-'+i), note = D('note-'+i)
+                p.min ='5' // 32Hz should be low enough for most
+                p.max ='12.3'
+                p.step='0.0001'
+                p.oninput=p.onpointerup=p.ontouchend=_=>{
+                    note.dataset.pitch = (2 ** p.value) | 0
+                    pText.innerHTML = note.dataset.pitch + 'hz<br>'
+                    sendDATA()
+                }
+            }
+        }
+    }
+
     D('active-step-btn').onclick = toggleActiveStep
     let _T=false
     function toggleActiveStep() {
@@ -217,7 +258,7 @@
                 (n.dataset.active ^= 1,
                 n.classList.toggle('enabled'), 
                 sendDATA()) :
-                gotoPage(knobs)
+                0//gotoPage(knobs)
         })
     }
 </script>
