@@ -32,8 +32,18 @@ struct player_t {
   long start_ms = millis();
   long ms = 0;
   int currentNote=0;
-  int delayMS = 0; // (tempo)
+  int delayMS = 100; // (tempo) - 120bpm
 } player;
+
+typedef struct {
+  bool active = true;
+  int pitch = 400;
+  int waveType = 0;
+  float mod_period = 1;
+  float mod_intensity = 0.05;
+} Note;
+
+Note notes[8];
 
 /*__________________________________________________________SETUP__________________________________________________________*/
 
@@ -56,6 +66,11 @@ void setup() {
 
   startServer();               // Start a HTTP server with a file read handler and an upload handler
   Serial.println(atoi("hello"));
+  for(int i = 0; i < 8; i++) {
+    notes[i].pitch += i*114;
+    if (i > 5)
+      notes[i].active = 0;
+  }
 }
 
 /*__________________________________________________________LOOP__________________________________________________________*/
@@ -70,30 +85,21 @@ void setup() {
 //     delayMicroseconds(mics);
 // }
 
-
+const double pi2 = PI/2.0;
 double waveFunction(int f, double x) {
   switch (f) {
     case 0: return sin(x);                // sine
-    case 1: return asin(sin(x));          // tri
-    case 2: return sin(x) > 0.5 ? 1 : -1; // square
+    case 1: return asin(sin(x)); // tri
+    case 2: return sin(x) > 0 ? 1 : -1; // square
     case 3: return atan(tan(x));          // saw
     case 4: return -atan(tan(x));         // reverse saw
-    case 5: return cos(tan(x));           // X
-    case 6: return sin(1/sin(x));         // Y
-    case 8: return atan(tan(x))-tan(cos(x)); // Z
-    case 9: return sqrt(-1);     // noise
+    case 5: return max(tan(-x/PI+pi2),tan(-x/PI));       // X
+    case 6: return max(tan(x/PI+pi2),tan(x/PI));         // Y
+    case 7: return cos(x)*3+sin(x*10);     // noisy
+    case 8: return cos(x)*3+sin(x*50);     // noisyer
+    case 9: return atan(tan(x))-tan(cos(x)); // Z
   }
 }
-typedef struct {
-  bool active = true;
-  int pitch = 220;
-  int waveType = 0;
-  float mod_period = 1;
-  float mod_intensity = 0.05;
-} Note;
-
-Note notes[8];
-
 
 void loop() {
   webSocket.loop();                           // constantly check for websocket events
@@ -103,12 +109,15 @@ void loop() {
       player.currentNote = (player.currentNote+1) % 8;
     } while (x++ < 8 && !notes[player.currentNote].active);
     player.start_ms = player.ms;
+    player.T=0; // restart the mod wave;
   }
   player.ms = millis();
-  const Note note = notes[0];//notes[player.currentNote];
+  const Note note = notes[player.currentNote];
   const double wf = waveFunction(note.waveType, ++player.T * note.mod_period / 1000.0 );
   if (x < 8) // mute by active step
-    tone(player.pin, note.pitch + wf * note.mod_intensity * (wf > 0 ? 2 : 1));
+    tone(player.pin, note.pitch + wf * note.mod_intensity);
+  else
+    noTone(player.pin);
 
   server.handleClient();                      // run the server
 //  ArduinoOTA.handle();                        // listen for OTA events
@@ -159,7 +168,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         // ]
       const int datalength = 1 + 8 * 5;
       int data[datalength];
+      for(int i = 0; i < datalength; i++) data[i] = 0;
       for(int i = 0, j = 0; i < lenght; ++i) {
+        if (payload[i]=='C') return;
         char c = payload[i] - 48;
         if (c == 10) {
           ++j;
@@ -167,8 +178,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
         }
         data[j] = data[j] * 10 + c;
       }
-      player.delayMS = 60000/data[0];
-      Serial.print('delayMS =');
+      Serial.print("BPM =");
+      Serial.println(data[0]);
+      const int myDelay = 1000*(30.0/data[0]); // 8th note steps
+      player.delayMS = myDelay;
+      Serial.print("delay =");
+      Serial.println(player.delayMS);
       for (int i = 1; i < datalength; i++) {
         const int noteIdx = (i-1)/5;
         const int x = (i-1) % 5;

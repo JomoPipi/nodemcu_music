@@ -15,72 +15,95 @@
 <body>
 
     <div id="interface" >
-        Master Tempo
-        <input id="tempo" type="range" min="60" max="300" step="1" oninput="sendDATA();"
+        <span id="tempo-txt"></span>
+        <input id="tempo"class="slider"type="range" min="6.5" max="9" step="0.001" 
+        oninput="D('tempo-txt').innerHTML='BPM: '+((2**this.value)**2/256|0);sendDATA();"
         value="80" onpointerup="sendDATA();" ontouchend="sendDATA();"> 
         <br>
     </div> 
 
     <div id="pitch-page">
-        <button class="back" onclick="gotoPage(interface)"> back </button>
-        <button class="back" onclick="gotoPage(interface)"> 12-tone </button> 
-        <button class="back" onclick="gotoPage(interface)"> n-tone </button> <br>
+        <div id="pitch-options">
+            <button class="back" onclick="gotoPage(interface)"> back </button>
+            <button class="back" onclick="gotoPage(interface)"> 12-tone </button> 
+        </div>
+        <div id="pitch-slider-container"></div>
     </div>
 
     <div id="mod-page">
-        <button class="back" onclick="gotoPage(interface)"> back </button> <br>
+        <div id="mod-options">
+            <button class="back" onclick="gotoPage(interface)"> back </button> 
+            <div class="screen"></div>
+        </div>
+        <div id="mod-slider-container"></div>
     </div>
     
     <div id="wave-page">
-        <button class="back" onclick="gotoPage(interface)"> back </button> <br>
+        <div id="wave-options">
+            <button class="back" onclick="gotoPage(interface)"> back </button> 
+        </div>
+        <div id="wave-slider-container"></div>
     </div>
 
-    <div id="knobs">
-
-        <div id="screen">
-        </div>
-        <button class="back" onclick="gotoPage(interface)"> back </button>
-        
-        <input id="pitch" type="range" min="0" max="12.3" step="0.0001" oninput="sendDATA();"
-        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
-
-        <input id="mod_intensity" type="range" min="0" max="100" step="0.01" oninput="sendDATA();"
-        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
-        
-        <input id="mod_period" type="range" min="0" max="6" step="0.001" oninput="sendDATA();"
-        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
-
-        <input id="waveform" type="range" min="0" max="8" step="1" oninput="sendDATA();"
-        value="0" onpointerup="sendDATA();" ontouchend="sendDATA();">
-
-
+    <div id="functions-page">
+        <button class="back" onclick="gotoPage(interface)"> back </button> 
+        <button class="back" onclick="notes.reverse();sendDATA();"> reverse </button>
+        <br>
+        <br>
+        <br>
+        <br>
+        <button class="function-btn"> a </button>
+        <button class="function-btn"> b </button>
+        <button class="function-btn"> c </button>
+        <button class="function-btn"> d </button>
+        <br>
+        <button class="function-btn"> e </button>
+        <button class="function-btn"> f </button>
+        <button class="function-btn"> g </button>
+        <button class="function-btn"> h </button>
     </div>
 </body>
 <script>
-    const [interface,knobs,pitchPage,modPage,wavePage] = PAGES =
-        'interface,knobs,pitch-page,mod-page,wave-page'
+    const [interface,pitchPage,modPage,wavePage,functionsPage] = PAGES =
+        'interface,pitch-page,mod-page,wave-page,functions-page'
         .split`,`.map(D)
+    const mkSlider = _ => {
+        const p = E('input')
+        p.type='range'
+        p.classList.add('slider')
+        return p
+    }
     const funcs = 
         'active-step,pitch,mod,wave,function'
         .split`,`
+
+    const mkBtn = (i,x) => {
+        const btn = E('button')
+        btn.classList.add(x?'back':'function-btn')
+        btn.id = funcs[i] + '-btn'
+        btn.innerHTML = funcs[i]
+        btn.onclick = _ =>
+            i === 0 ? toggleActiveStep :
+            i === 1 ? gotoPage(pitchPage) :
+            i === 2 ? gotoPage(modPage) : 
+            i === 3 ? gotoPage(wavePage) :
+                      gotoPage(functionsPage)
+        return btn
+    }
+
+    ;['pitch-options','mod-options','wave-options'].forEach((p,j)=>{
+        for(let i=1;i<=3;i++)
+            if (i-1!==j)
+                D(p).appendChild(mkBtn(i,true))
+    })
     
     const gotoPage = p => PAGES.forEach(P => 
         P.style.display =  P === p ? 'block' : 'none')
 
     // ############## INITIALIZE #######################
         const btns = Array(5).fill().map((_,i) => {
-            const btn = E('button')
-            btn.classList.add('function-btn')
-            btn.id = funcs[i] + '-btn'
-            btn.innerHTML = funcs[i]
-            interface.appendChild(btn)
-            btn.onclick = _ =>
-                i === 0 ? toggleActiveStep :
-                i === 1 ? gotoPage(pitchPage) :
-                i === 2 ? gotoPage(modPage) : 
-                i === 3 ? gotoPage(wavePage) :
-                          0//gotoPage(functionPage)
-            return btn
+            const btn = mkBtn(i);
+            interface.appendChild(btn);
         })
         interface.appendChild(E('br'))
 
@@ -94,27 +117,90 @@
             note.classList.add('note-btn')
             note.innerHTML = i+1
             note.id = 'note-'+i
-            note.onclick = _ => gotoPage(knobs)
+            // note.onclick = _ => gotoPage(knobs,i)
             interface.appendChild(note)
             notes[i] = note
-
-            // pitch page
-            const p = E('input')
-            p.type='range'
-            p.classList.add('pitch-slider')
-            pitchPage.appendChild(p)
-            p.position="absolute"
-            p.id = 'p-'+i
-            p.min ='0'
-            p.max ='12.3'
-            p.step='0.0001'
-            p.value=d.pitch
-            p.transform="rotate(90deg)"
-            p.oninput=p.onpointerup=p.ontouchend=_=>{
-                note.dataset.pitch = (2 ** p.value) | 0
-                sendDATA()
-            }
             
+            {
+                // pitch page
+                const p = mkSlider();
+                p.classList.add('pitch-slider')
+                const box = E('div')
+                box.style.width = '12.5vw'
+                box.style.height = '50vh'
+                box.style.display = 'inline-block'
+                const text = E('div')
+                box.appendChild(text)
+                box.appendChild(p)
+                D('pitch-slider-container').appendChild(box)
+                p.id = 'p-'+i
+                p.min ='5' // 32Hz should be low enough for most
+                p.max ='12.3'
+                p.step='0.0001'
+                p.value=d.pitch
+                p.oninput=p.onpointerup=p.ontouchend=_=>{
+                    note.dataset.pitch = (2 ** p.value) | 0
+                    text.innerHTML = note.dataset.pitch + 'hz<br>'
+                    sendDATA()
+                }
+            }
+            {
+                // mod page
+                const p = mkSlider();
+                p.classList.add('mod-slider')
+                const q = mkSlider();
+                q.classList.add('mod-speed-slider')
+                const box = E('div')
+                box.style.width = '12.5vw'
+                box.style.height = '0vh'
+                box.style.backgroundColor = 'inherit'
+                box.style.display = 'inline-block'
+                const text = E('div')
+                box.appendChild(text)
+                box.appendChild(p)
+                box.appendChild(q)
+                D('mod-slider-container').appendChild(box)
+
+                p.id = 'm-'+i
+                p.value=p.min = 0
+                p.max ='100'
+                p.step='0.01'
+
+                q.id = 'ms-'+i
+                q.value=q.min = '-2'
+                q.max ='6'
+                q.step='0.0001'
+                const data = [0,0];
+                p.oninput=p.onpointerup=p.ontouchend=_=>{
+                    note.dataset.modA = p.value * 100 | 0
+                    data[0] = p.value | 0
+                    text.innerHTML = data.join` : `
+                    sendDATA()
+                }
+                q.oninput=q.onpointerup=q.ontouchend=_=>{
+                    note.dataset.modP = (2 ** q.value) * 100 | 0
+                    data[1] = (2 ** q.value).toFixed(2)
+                    text.innerHTML = data.join`:`
+                    sendDATA()
+                }
+            }
+            {
+                
+                // wave page
+                const p = mkSlider();
+                p.classList.add('mod-slider')
+                D('wave-slider-container').appendChild(p)
+
+                p.id = 'm-'+i
+                p.value=p.min =0
+                p.max ='9'
+                p.step='1'
+                
+                p.oninput=p.onpointerup=p.ontouchend=_=>{
+                    note.dataset.wave = p.value
+                    sendDATA()
+                }
+            }
         })
     // ############################################################
     
