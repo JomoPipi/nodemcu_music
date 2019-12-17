@@ -114,7 +114,7 @@ void loop() {
   player.ms = millis();
   const Note note = notes[player.currentNote];
   const double wf = waveFunction(note.waveType, ++player.T * note.mod_period / 1000.0 );
-  if (x < 8) // mute by active step
+  if (note.pitch >= 0 && x < 8) // mute by active step
     tone(player.pin, note.pitch + wf * note.mod_intensity);
   else
     noTone(player.pin);
@@ -170,13 +170,15 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght
       int data[datalength];
       for(int i = 0; i < datalength; i++) data[i] = 0;
       for(int i = 0, j = 0; i < lenght; ++i) {
-        if (payload[i]=='C') return;
         char c = payload[i] - 48;
         if (c == 10) {
           ++j;
           continue;
         }
-        data[j] = data[j] * 10 + c;
+        if (payload[i] == 'x')
+          data[j] = -1;
+        else
+          data[j] = data[j] * 10 + c;
       }
       Serial.print("BPM =");
       Serial.println(data[0]);

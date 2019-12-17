@@ -15,7 +15,7 @@
 <body>
 
     <div id="interface" >
-        <span id="tempo-txt"></span>
+        <span id="tempo-txt">&nbsp;</span>
         <input id="tempo"class="slider"type="range" min="6.5" max="9" step="0.001" 
         oninput="D('tempo-txt').innerHTML='BPM: '+((2**this.value)**2/256|0);sendDATA();"
         value="80" onpointerup="sendDATA();" ontouchend="sendDATA();"> 
@@ -33,7 +33,6 @@
     <div id="mod-page">
         <div id="mod-options">
             <button class="back" onclick="gotoPage(interface)"> back </button> 
-            <div class="screen"></div>
         </div>
         <div id="mod-slider-container"></div>
     </div>
@@ -48,19 +47,9 @@
     <div id="functions-page">
         <button class="back" onclick="gotoPage(interface)"> back </button> 
         <button class="back" onclick="notes.reverse();sendDATA();"> reverse </button>
+        <button class="back" id="copy-to"> copy-to </button>
         <br>
-        <br>
-        <br>
-        <br>
-        <button class="function-btn"> a </button>
-        <button class="function-btn"> b </button>
-        <button class="function-btn"> c </button>
-        <button class="function-btn"> d </button>
-        <br>
-        <button class="function-btn"> e </button>
-        <button class="function-btn"> f </button>
-        <button class="function-btn"> g </button>
-        <button class="function-btn"> h </button>
+        <div id="beatpad"></div>
     </div>
 </body>
 <script>
@@ -73,9 +62,40 @@
         p.classList.add('slider')
         return p
     }
+    const abc = 'ABCDEFGH'
     const funcs = 
         'active-step,pitch,mod,wave,function'
         .split`,`
+    
+    {
+    // beatpad functionality
+
+        // create buttons
+        for (const c of abc) {
+            const btn = E('button')
+            btn.id=btn.innerHTML = c
+            btn.classList.add('function-btn')
+            btn.style.fontSize='3em'
+            btn.switch = function() {
+                if (this.classList.toggle('ready-to-copy')) {
+                    this.onclick = _ => {
+                        this.dataset.data = makePayload()
+                        D('copy-to').onclick()
+                    }
+                } else {
+                    this.onclick = _ => {
+                        sendDATA(this.dataset.data);
+                    }
+                }
+            }
+            D('beatpad').appendChild(btn)
+        }
+        D('copy-to').onclick = function () {
+            this.classList.toggle('enabled')
+            for (const c of abc)
+                D(c).switch()
+        }
+    }
 
     const mkBtn = (i,x) => {
         const btn = E('button')
@@ -106,7 +126,7 @@
             interface.appendChild(btn);
         })
         interface.appendChild(E('br'))
-
+        const notes = [...Array(8)]
         notes.forEach((_,i) => {
             const note = E('button'),d=note.dataset
             d.active=1
@@ -117,7 +137,13 @@
             note.classList.add('note-btn')
             note.innerHTML = i+1
             note.id = 'note-'+i
-            // note.onclick = _ => gotoPage(knobs,i)
+            note.onclick = note.toggle = _ => { 
+                (note.classList.toggle('disabled'), d.pitch === 'x') ? 
+                    (d.pitch = d.pitchCache) : 
+                    (d.pitchCache = d.pitch, 
+                    d.pitch = 'x')
+                sendDATA()
+            }
             interface.appendChild(note)
             notes[i] = note
             
@@ -126,10 +152,9 @@
                 const p = mkSlider();
                 p.classList.add('pitch-slider')
                 const box = E('div')
-                box.style.width = '12.5vw'
-                box.style.height = '50vh'
-                box.style.display = 'inline-block'
+                box.classList.add('slider-box')
                 const text = E('div')
+                text.innerHTML='&nbsp;'
                 text.id = 'ps-text-'+i
                 box.appendChild(text)
                 box.appendChild(p)
@@ -152,11 +177,9 @@
                 const q = mkSlider();
                 q.classList.add('mod-speed-slider')
                 const box = E('div')
-                box.style.width = '12.5vw'
-                box.style.height = '0vh'
-                box.style.backgroundColor = 'inherit'
-                box.style.display = 'inline-block'
+                box.classList.add('slider-box')
                 const text = E('div')
+                text.innerHTML='&nbsp;'
                 box.appendChild(text)
                 box.appendChild(p)
                 box.appendChild(q)
@@ -190,7 +213,13 @@
                 // wave page
                 const p = mkSlider();
                 p.classList.add('mod-slider')
-                D('wave-slider-container').appendChild(p)
+                const box = E('div')
+                box.classList.add('slider-box')
+                const text = E('div')
+                text.innerHTML='&nbsp;'
+                box.appendChild(text)
+                box.appendChild(p)
+                D('wave-slider-container').appendChild(box)
 
                 p.id = 'm-'+i
                 p.value=p.min =0
@@ -199,6 +228,8 @@
                 
                 p.oninput=p.onpointerup=p.ontouchend=_=>{
                     note.dataset.wave = p.value
+                    text.innerHTML = 
+                        'sin,tri,sq,saw,r-saw,x,y,a,b,c'.split`,`[p.value]
                     sendDATA()
                 }
             }
@@ -207,7 +238,7 @@
     const middleC = 261.625565
     const numKeys = 88
     const TR2 = 2 ** (1/12.0)
-    const pitches = Array(numKeys).fill().map((_,i) => 
+    const pitches = Array(numKeys+1).fill().map((_,i) => 
         middleC * TR2**(i-36)).map(x=>Math.round(x))
     function noteName(i) {
         return 'A,A#/Bb,B,C,C#/Db,D,D#/Eb,E,F,F#/Gb,G,G#/Ab'.split`,`[(i+3)%12] +
@@ -225,8 +256,6 @@
                     const j = p.value
                     note.dataset.pitch = pitches[j]
                     pText.innerHTML = noteName(+j)
-                    if (pText.innerHTML === 'E5')
-                        pText.innerHTML = 'off'
                     sendDATA()
                 }
             }
@@ -254,11 +283,12 @@
         notes.forEach((n,i) => {
             if (n.dataset.active == true) 
                 n.classList.toggle('enabled')
-            n.onclick = _ => _T ? 
+            n.onclick = _ => {
+                _T ? 
                 (n.dataset.active ^= 1,
-                n.classList.toggle('enabled'), 
-                sendDATA()) :
-                0//gotoPage(knobs)
+                n.classList.toggle('enabled'),
+                sendDATA()) : n.toggle();
+            }
         })
     }
 </script>

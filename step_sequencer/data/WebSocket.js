@@ -14,7 +14,7 @@ connection.onclose = function(){
 };
 function D(x) { return document.getElementById(x) }
 function E(e) { return document.createElement(e)  }
-const notes = [...Array(8)]
+
 /*
 
     Data needs to be of the form
@@ -29,9 +29,7 @@ const notes = [...Array(8)]
     :isActive:pitchHZ:modAmount:modPeriod:wave
 
 */
-
-
-function sendDATA() {
+function makePayload() {
     const items = [((2**D('tempo').value)**2/256|0)]
     notes.forEach(note => {
         const d=note.dataset
@@ -43,7 +41,9 @@ function sendDATA() {
             d.wave
         ].join`:`)
     })
-    const payload = items.join`:`
-    log(payload)
-    connection.send(payload)
+    return items.join`:`
+}
+
+function sendDATA(data) {
+    connection.send(data||makePayload())
 }
